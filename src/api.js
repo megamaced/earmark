@@ -21,7 +21,6 @@ export const getListens = async (limit = 50, offset = 0) =>
 export const getLastfm = async () => data(await axios.get(ocs('/settings/lastfm')))
 export const setLastfm = async (username) => data(await axios.post(ocs('/settings/lastfm'), { username }))
 export const startImport = async () => data(await axios.post(ocs('/settings/lastfm/import')))
-export const setApiKey = async (apiKey) => data(await axios.post(ocs('/settings/lastfm/api-key'), { apiKey }))
 
 /* ── Scrobble tokens ──────────────────────────────────────────────────── */
 export const listTokens = async () => data(await axios.get(ocs('/tokens')))

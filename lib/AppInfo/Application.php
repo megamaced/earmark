@@ -20,6 +20,7 @@ class Application extends App implements IBootstrap
 
     public function register(IRegistrationContext $context): void
     {
+        $context->registerDeclarativeSettings(\OCA\Earmark\Settings\AdminSettings::class);
     }
 
     public function boot(IBootContext $context): void

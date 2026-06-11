@@ -63,13 +63,6 @@ class SettingsController extends OCSController
         return $this->getLastfm();
     }
 
-    /** Admin-only: the Last.fm API key is an instance-wide credential. */
-    public function setApiKey(string $apiKey = ''): DataResponse
-    {
-        $this->lastfmService->setApiKey($apiKey);
-        return new DataResponse(['hasApiKey' => $this->lastfmService->hasApiKey()]);
-    }
-
     private function userId(): string
     {
         $user = $this->userSession->getUser();

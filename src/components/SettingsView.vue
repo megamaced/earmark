@@ -9,7 +9,8 @@
         v-if="!lastfm.hasApiKey"
         class="muted"
       >
-        A Last.fm API key must be configured by an administrator before importing.
+        A Last.fm API key must be configured by an administrator (Settings →
+        Administration → Additional settings) before importing.
       </p>
       <div class="field">
         <NcTextField
@@ -35,30 +36,6 @@
       >
         {{ lastfm.state === 'backfill' ? 'Import running…' : 'Start full import' }}
       </NcButton>
-    </section>
-
-    <!-- Admin: API key -->
-    <section
-      v-if="isAdmin"
-      class="card"
-    >
-      <h3>Last.fm API key <span class="muted">(admin)</span></h3>
-      <p class="muted">
-        Create a key at last.fm/api. Stored instance-wide and shared by all users.
-      </p>
-      <div class="field">
-        <NcTextField
-          v-model:value="apiKey"
-          label="API key"
-          type="password"
-        />
-        <NcButton
-          :disabled="savingApiKey"
-          @click="saveApiKey"
-        >
-          Save
-        </NcButton>
-      </div>
     </section>
 
     <!-- Scrobble tokens -->
@@ -129,7 +106,7 @@ import { ref, computed, onMounted } from 'vue'
 import { NcButton, NcTextField } from '@nextcloud/vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import {
-  getLastfm, setLastfm, startImport, setApiKey,
+  getLastfm, setLastfm, startImport,
   listTokens, createToken, deleteToken,
 } from '../api.js'
 import { formatNumber, relativeTime } from '../format.js'
@@ -138,17 +115,14 @@ const STATE_LABELS = { '': 'Not started', backfill: 'Importing…', done: 'Up to
 
 const lastfm = ref({ username: '', state: '', hasApiKey: false, listenCount: 0 })
 const username = ref('')
-const apiKey = ref('')
 const newLabel = ref('')
 const tokens = ref([])
 const freshToken = ref('')
 
 const savingUsername = ref(false)
-const savingApiKey = ref(false)
 const starting = ref(false)
 const creating = ref(false)
 
-const isAdmin = typeof OC !== 'undefined' && typeof OC.isUserAdmin === 'function' && OC.isUserAdmin()
 const stateLabel = computed(() => STATE_LABELS[lastfm.value.state] ?? lastfm.value.state)
 const canImport = computed(() => lastfm.value.hasApiKey && lastfm.value.username !== '')
 
@@ -166,24 +140,10 @@ async function saveUsername() {
   try {
     lastfm.value = await setLastfm(username.value)
     showSuccess('Last.fm username saved')
-  } catch (e) {
+  } catch {
     showError('Failed to save username')
   } finally {
     savingUsername.value = false
-  }
-}
-
-async function saveApiKey() {
-  savingApiKey.value = true
-  try {
-    await setApiKey(apiKey.value)
-    apiKey.value = ''
-    await refresh()
-    showSuccess('API key saved')
-  } catch (e) {
-    showError('Failed to save API key')
-  } finally {
-    savingApiKey.value = false
   }
 }
 
@@ -214,7 +174,7 @@ async function createNewToken() {
     freshToken.value = created.token
     newLabel.value = ''
     await loadTokens()
-  } catch (e) {
+  } catch {
     showError('Failed to create token')
   } finally {
     creating.value = false
@@ -225,7 +185,7 @@ async function revoke(id) {
   try {
     await deleteToken(id)
     await loadTokens()
-  } catch (e) {
+  } catch {
     showError('Failed to revoke token')
   }
 }
@@ -234,7 +194,7 @@ async function copyToken() {
   try {
     await navigator.clipboard.writeText(freshToken.value)
     showSuccess('Token copied')
-  } catch (e) {
+  } catch {
     showError('Could not copy — select and copy manually')
   }
 }
