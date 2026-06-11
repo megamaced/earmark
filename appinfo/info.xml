@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>earmark</id>
+    <name>Earmark</name>
+    <summary>Self-hosted scrobble store</summary>
+    <description><![CDATA[Record what you listen to, on a server you control. Earmark is a lightweight self-hosted scrobble store: it accepts scrobbles from Last.fm-compatible clients, imports your full Last.fm (and optionally Spotify) history, resolves listens to MusicBrainz, and shows your listening stats — all inside Nextcloud, with none of the heavy infrastructure a full ListenBrainz needs.]]></description>
+    <version>0.1.0</version>
+    <licence>agpl</licence>
+    <author mail="22581049+megamaced@users.noreply.github.com" homepage="https://github.com/megamaced/earmark">megamaced</author>
+    <namespace>Earmark</namespace>
+    <category>multimedia</category>
+    <bugs>https://github.com/megamaced/earmark/issues</bugs>
+    <repository type="git">https://github.com/megamaced/earmark</repository>
+    <dependencies>
+        <nextcloud min-version="30" max-version="33"/>
+    </dependencies>
+    <navigations>
+        <navigation>
+            <id>earmark</id>
+            <name>Earmark</name>
+            <route>earmark.page.index</route>
+            <icon>app.svg</icon>
+            <order>10</order>
+        </navigation>
+    </navigations>
+</info>

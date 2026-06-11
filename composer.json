@@ -1,0 +1,24 @@
+{
+	"name": "megamaced/earmark",
+	"description": "Self-hosted scrobble store for Nextcloud",
+	"type": "project",
+	"license": "AGPL-3.0-or-later",
+	"require": {
+		"php": "^8.2"
+	},
+	"require-dev": {
+		"nextcloud/ocp": "^33",
+		"phpunit/phpunit": "^13",
+		"squizlabs/php_codesniffer": "^4"
+	},
+	"autoload": {
+		"psr-4": {
+			"OCA\\Earmark\\": "lib/"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"OCA\\Earmark\\Tests\\": "tests/"
+		}
+	}
+}
