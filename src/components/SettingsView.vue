@@ -1,0 +1,314 @@
+<template>
+  <div class="settings">
+    <h2>Settings</h2>
+
+    <!-- Last.fm import -->
+    <section class="card">
+      <h3>Last.fm import</h3>
+      <p
+        v-if="!lastfm.hasApiKey"
+        class="muted"
+      >
+        A Last.fm API key must be configured by an administrator before importing.
+      </p>
+      <div class="field">
+        <NcTextField
+          v-model:value="username"
+          label="Last.fm username"
+          placeholder="your-lastfm-username"
+        />
+        <NcButton
+          :disabled="savingUsername"
+          @click="saveUsername"
+        >
+          Save
+        </NcButton>
+      </div>
+      <div class="import-status">
+        <span>Status: <strong>{{ stateLabel }}</strong></span>
+        <span class="muted">· {{ formatNumber(lastfm.listenCount) }} listens stored</span>
+      </div>
+      <NcButton
+        type="primary"
+        :disabled="!canImport || starting"
+        @click="triggerImport"
+      >
+        {{ lastfm.state === 'backfill' ? 'Import running…' : 'Start full import' }}
+      </NcButton>
+    </section>
+
+    <!-- Admin: API key -->
+    <section
+      v-if="isAdmin"
+      class="card"
+    >
+      <h3>Last.fm API key <span class="muted">(admin)</span></h3>
+      <p class="muted">
+        Create a key at last.fm/api. Stored instance-wide and shared by all users.
+      </p>
+      <div class="field">
+        <NcTextField
+          v-model:value="apiKey"
+          label="API key"
+          type="password"
+        />
+        <NcButton
+          :disabled="savingApiKey"
+          @click="saveApiKey"
+        >
+          Save
+        </NcButton>
+      </div>
+    </section>
+
+    <!-- Scrobble tokens -->
+    <section class="card">
+      <h3>Scrobble tokens</h3>
+      <p class="muted">
+        Point a scrobble client (ListenBrainz or Last.fm-protocol) at this server using a token
+        below as the password, with your Nextcloud username.
+      </p>
+
+      <div class="field">
+        <NcTextField
+          v-model:value="newLabel"
+          label="Label (e.g. Pano Scrobbler)"
+        />
+        <NcButton
+          :disabled="creating"
+          @click="createNewToken"
+        >
+          Create
+        </NcButton>
+      </div>
+
+      <div
+        v-if="freshToken"
+        class="fresh-token"
+      >
+        <p>Copy this token now — it won't be shown again:</p>
+        <code class="fresh-token__value">{{ freshToken }}</code>
+        <NcButton @click="copyToken">
+          Copy
+        </NcButton>
+      </div>
+
+      <ul
+        v-if="tokens.length"
+        class="token-list"
+      >
+        <li
+          v-for="t in tokens"
+          :key="t.id"
+          class="token"
+        >
+          <span class="token__label">{{ t.label || 'Unnamed token' }}</span>
+          <span class="muted token__meta">
+            created {{ relativeTime(t.createdAt) }}<span v-if="t.lastUsedAt"> · last used {{ relativeTime(t.lastUsedAt) }}</span>
+          </span>
+          <NcButton
+            type="tertiary"
+            @click="revoke(t.id)"
+          >
+            Revoke
+          </NcButton>
+        </li>
+      </ul>
+      <p
+        v-else
+        class="muted"
+      >
+        No tokens yet.
+      </p>
+    </section>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { NcButton, NcTextField } from '@nextcloud/vue'
+import { showError, showSuccess } from '@nextcloud/dialogs'
+import {
+  getLastfm, setLastfm, startImport, setApiKey,
+  listTokens, createToken, deleteToken,
+} from '../api.js'
+import { formatNumber, relativeTime } from '../format.js'
+
+const STATE_LABELS = { '': 'Not started', backfill: 'Importing…', done: 'Up to date' }
+
+const lastfm = ref({ username: '', state: '', hasApiKey: false, listenCount: 0 })
+const username = ref('')
+const apiKey = ref('')
+const newLabel = ref('')
+const tokens = ref([])
+const freshToken = ref('')
+
+const savingUsername = ref(false)
+const savingApiKey = ref(false)
+const starting = ref(false)
+const creating = ref(false)
+
+const isAdmin = typeof OC !== 'undefined' && typeof OC.isUserAdmin === 'function' && OC.isUserAdmin()
+const stateLabel = computed(() => STATE_LABELS[lastfm.value.state] ?? lastfm.value.state)
+const canImport = computed(() => lastfm.value.hasApiKey && lastfm.value.username !== '')
+
+async function refresh() {
+  try {
+    lastfm.value = await getLastfm()
+    username.value = lastfm.value.username
+  } catch (e) {
+    console.error('[Earmark] failed to load settings', e)
+  }
+}
+
+async function saveUsername() {
+  savingUsername.value = true
+  try {
+    lastfm.value = await setLastfm(username.value)
+    showSuccess('Last.fm username saved')
+  } catch (e) {
+    showError('Failed to save username')
+  } finally {
+    savingUsername.value = false
+  }
+}
+
+async function saveApiKey() {
+  savingApiKey.value = true
+  try {
+    await setApiKey(apiKey.value)
+    apiKey.value = ''
+    await refresh()
+    showSuccess('API key saved')
+  } catch (e) {
+    showError('Failed to save API key')
+  } finally {
+    savingApiKey.value = false
+  }
+}
+
+async function triggerImport() {
+  starting.value = true
+  try {
+    lastfm.value = await startImport()
+    showSuccess('Import started — it runs in the background')
+  } catch (e) {
+    showError(e?.response?.data?.ocs?.data?.error || 'Failed to start import')
+  } finally {
+    starting.value = false
+  }
+}
+
+async function loadTokens() {
+  try {
+    tokens.value = await listTokens() ?? []
+  } catch (e) {
+    console.error('[Earmark] failed to load tokens', e)
+  }
+}
+
+async function createNewToken() {
+  creating.value = true
+  try {
+    const created = await createToken(newLabel.value)
+    freshToken.value = created.token
+    newLabel.value = ''
+    await loadTokens()
+  } catch (e) {
+    showError('Failed to create token')
+  } finally {
+    creating.value = false
+  }
+}
+
+async function revoke(id) {
+  try {
+    await deleteToken(id)
+    await loadTokens()
+  } catch (e) {
+    showError('Failed to revoke token')
+  }
+}
+
+async function copyToken() {
+  try {
+    await navigator.clipboard.writeText(freshToken.value)
+    showSuccess('Token copied')
+  } catch (e) {
+    showError('Could not copy — select and copy manually')
+  }
+}
+
+onMounted(() => {
+  refresh()
+  loadTokens()
+})
+</script>
+
+<style scoped>
+.settings {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+.card {
+  margin-top: 20px;
+  padding: 18px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-large, 12px);
+}
+.card h3 {
+  margin-top: 0;
+}
+.field {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin: 12px 0;
+}
+.field :deep(.input-field) {
+  flex: 1;
+}
+.import-status {
+  margin: 10px 0 14px;
+}
+.fresh-token {
+  margin: 12px 0;
+  padding: 12px;
+  background: var(--color-background-hover);
+  border-radius: var(--border-radius, 8px);
+}
+.fresh-token__value {
+  display: block;
+  margin: 8px 0;
+  padding: 8px;
+  background: var(--color-main-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius, 8px);
+  word-break: break-all;
+  font-family: monospace;
+}
+.token-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+.token {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.token__label {
+  font-weight: 600;
+}
+.token__meta {
+  flex: 1;
+  font-size: 0.8em;
+}
+.muted {
+  color: var(--color-text-maxcontrast);
+  font-weight: normal;
+}
+</style>

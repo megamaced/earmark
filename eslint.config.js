@@ -15,10 +15,15 @@ module.exports = [
                 ...globals.browser,
                 ...globals.node,
                 ...globals.es2021,
+                OC: 'readonly',
+                OCA: 'readonly',
+                OCP: 'readonly',
             },
         },
         rules: {
             'vue/multi-word-component-names': 'off',
+            // Unused catch bindings are fine — we often catch to swallow/route an error.
+            'no-unused-vars': ['error', { caughtErrors: 'none' }],
         },
     },
 ]
