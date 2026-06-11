@@ -1,6 +1,6 @@
 {
   "name": "earmark",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Self-hosted scrobble store for Nextcloud",
   "scripts": {
     "build": "webpack --node-env production",
