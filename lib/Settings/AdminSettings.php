@@ -4,24 +4,20 @@ declare(strict_types=1);
 
 namespace OCA\Earmark\Settings;
 
-use OCA\Earmark\Service\LastfmService;
 use OCP\Settings\DeclarativeSettingsTypes;
-use OCP\Settings\IDeclarativeSettingsFormWithHandlers;
-use OCP\IUser;
+use OCP\Settings\IDeclarativeSettingsForm;
 
 /**
- * Instance-wide admin settings, shown under Settings → Administration. Holds
- * the Last.fm API key (one application credential shared by all users), with
- * `external` storage so the value is read/written through {@see LastfmService}
- * — i.e. the same app-config key the importer reads.
+ * Instance-wide admin settings, shown under Settings → Administration →
+ * Additional settings. Holds the Last.fm API key (one application credential
+ * shared by all users).
+ *
+ * Uses `internal` storage, so Nextcloud persists and repopulates the value
+ * itself in app config under (app: earmark, key: lastfm_api_key) — the same
+ * key {@see \OCA\Earmark\Service\LastfmService} reads.
  */
-class AdminSettings implements IDeclarativeSettingsFormWithHandlers
+class AdminSettings implements IDeclarativeSettingsForm
 {
-    public function __construct(
-        private readonly LastfmService $lastfmService,
-    ) {
-    }
-
     public function getSchema(): array
     {
         return [
@@ -29,7 +25,7 @@ class AdminSettings implements IDeclarativeSettingsFormWithHandlers
             'priority'     => 50,
             'section_type' => DeclarativeSettingsTypes::SECTION_TYPE_ADMIN,
             'section_id'   => 'additional',
-            'storage_type' => DeclarativeSettingsTypes::STORAGE_TYPE_EXTERNAL,
+            'storage_type' => DeclarativeSettingsTypes::STORAGE_TYPE_INTERNAL,
             'title'        => 'Earmark',
             'description'  => 'Last.fm API key used for history imports. Create one at '
                 . 'https://www.last.fm/api — it is shared by all users on this instance.',
@@ -43,17 +39,5 @@ class AdminSettings implements IDeclarativeSettingsFormWithHandlers
                 ],
             ],
         ];
-    }
-
-    public function getValue(string $fieldId, IUser $user): mixed
-    {
-        return $fieldId === 'lastfm_api_key' ? $this->lastfmService->getApiKey() : '';
-    }
-
-    public function setValue(string $fieldId, mixed $value, IUser $user): void
-    {
-        if ($fieldId === 'lastfm_api_key') {
-            $this->lastfmService->setApiKey((string) $value);
-        }
     }
 }
