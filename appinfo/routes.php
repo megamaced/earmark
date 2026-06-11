@@ -9,6 +9,12 @@ return [
         // ListenBrainz-compatible inbound scrobble submission. Public + CSRF-exempt;
         // authenticated by per-user scrobble token in the Authorization header.
         ['name' => 'listenBrainz#submitListens', 'url' => '/1/submit-listens', 'verb' => 'POST'],
+
+        // AudioScrobbler 1.2 ("Last.fm-style") protocol. Public + CSRF-exempt;
+        // handshake authenticates and issues a session used by np/submit.
+        ['name' => 'audioScrobbler#handshake',  'url' => '/scrobble',        'verb' => 'GET'],
+        ['name' => 'audioScrobbler#nowPlaying', 'url' => '/scrobble/np',     'verb' => 'POST'],
+        ['name' => 'audioScrobbler#submit',     'url' => '/scrobble/submit', 'verb' => 'POST'],
     ],
     'ocs' => [
         // Per-user scrobble tokens — Nextcloud-authenticated, used by the settings UI.

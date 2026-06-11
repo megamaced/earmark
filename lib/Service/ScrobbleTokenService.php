@@ -6,6 +6,7 @@ namespace OCA\Earmark\Service;
 
 use OCA\Earmark\Db\ScrobbleToken;
 use OCA\Earmark\Db\ScrobbleTokenMapper;
+use OCA\Earmark\Scrobble\AudioScrobblerAuth;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Security\ISecureRandom;
@@ -50,6 +51,7 @@ class ScrobbleTokenService
         $entity = new ScrobbleToken();
         $entity->setUserId($userId);
         $entity->setTokenHash(self::hashToken($token));
+        $entity->setTokenMd5(md5($token));
         $entity->setLabel($label);
         $entity->setCreatedAt($this->timeFactory->getTime());
 
@@ -96,13 +98,38 @@ class ScrobbleTokenService
             return null;
         }
 
+        $this->touch($entity);
+        return $entity->getUserId();
+    }
+
+    /**
+     * Verify an AudioScrobbler 1.2 handshake: the client sends
+     * `a = md5(md5(token) + timestamp)` for one of this user's tokens. Returns
+     * true if any of them matches.
+     */
+    public function authenticateLegacy(string $userId, string $timestamp, string $auth): bool
+    {
+        if ($timestamp === '' || $auth === '') {
+            return false;
+        }
+
+        foreach ($this->mapper->findByUser($userId) as $token) {
+            if (AudioScrobblerAuth::verify($token->getTokenMd5(), $timestamp, $auth)) {
+                $this->touch($token);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function touch(ScrobbleToken $entity): void
+    {
         $entity->setLastUsedAt($this->timeFactory->getTime());
         try {
             $this->mapper->update($entity);
         } catch (\Throwable) {
             // last_used_at is non-critical; don't fail auth if the update races
         }
-
-        return $entity->getUserId();
     }
 }

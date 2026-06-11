@@ -14,9 +14,10 @@ use OCP\Migration\SimpleMigrationStep;
  * Initial schema for the Earmark app.
  *
  * Tables:
- *   earmark_listens          — one row per recorded play, per user
- *   earmark_mb_cache         — cached MusicBrainz resolutions, keyed on track identity
- *   earmark_scrobble_tokens  — per-user credentials for the inbound scrobble API
+ *   earmark_listens           — one row per recorded play, per user
+ *   earmark_mb_cache          — cached MusicBrainz resolutions, keyed on track identity
+ *   earmark_scrobble_tokens   — per-user credentials for the inbound scrobble API
+ *   earmark_scrobble_sessions — ephemeral AudioScrobbler 1.2 handshake sessions
  *
  * Timestamps (`listened_at`, `resolved_at`, `created_at`, `last_used_at`)
  * are stored as Unix seconds in BIGINT columns. Long artist/track strings
@@ -92,7 +93,12 @@ class Version0001Date20260611000000 extends SimpleMigrationStep
 
             $tokens->addColumn('id', Types::BIGINT, ['autoincrement' => true, 'notnull' => true]);
             $tokens->addColumn('user_id', Types::STRING, ['notnull' => true, 'length' => 64]);
+            // SHA-256 hash — used by the ListenBrainz `Authorization: Token` auth.
             $tokens->addColumn('token_hash', Types::STRING, ['notnull' => true, 'length' => 64]);
+            // MD5 hash — needed to verify the AudioScrobbler 1.2 handshake, which
+            // sends md5(md5(token) + timestamp). The token is high-entropy, so
+            // storing its md5 does not meaningfully weaken it.
+            $tokens->addColumn('token_md5', Types::STRING, ['notnull' => true, 'length' => 32]);
             $tokens->addColumn('label', Types::STRING, ['notnull' => false, 'length' => 64]);
             $tokens->addColumn('created_at', Types::BIGINT, ['notnull' => true]);
             $tokens->addColumn('last_used_at', Types::BIGINT, ['notnull' => false]);
@@ -100,6 +106,19 @@ class Version0001Date20260611000000 extends SimpleMigrationStep
             $tokens->setPrimaryKey(['id']);
             $tokens->addUniqueIndex(['token_hash'], 'earmark_token_hash');
             $tokens->addIndex(['user_id'], 'earmark_token_user');
+        }
+
+        // ── AudioScrobbler 1.2 sessions ─────────────────────────────────────────
+        if (!$schema->hasTable('earmark_scrobble_sessions')) {
+            $sessions = $schema->createTable('earmark_scrobble_sessions');
+
+            $sessions->addColumn('id', Types::BIGINT, ['autoincrement' => true, 'notnull' => true]);
+            $sessions->addColumn('session_id', Types::STRING, ['notnull' => true, 'length' => 64]);
+            $sessions->addColumn('user_id', Types::STRING, ['notnull' => true, 'length' => 64]);
+            $sessions->addColumn('created_at', Types::BIGINT, ['notnull' => true]);
+
+            $sessions->setPrimaryKey(['id']);
+            $sessions->addUniqueIndex(['session_id'], 'earmark_session_sid');
         }
 
         return $schema;

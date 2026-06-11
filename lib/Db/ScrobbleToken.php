@@ -16,6 +16,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setUserId(string $userId)
  * @method string getTokenHash()
  * @method void setTokenHash(string $tokenHash)
+ * @method string getTokenMd5()
+ * @method void setTokenMd5(string $tokenMd5)
  * @method string|null getLabel()
  * @method void setLabel(?string $label)
  * @method int getCreatedAt()
@@ -27,6 +29,7 @@ class ScrobbleToken extends Entity implements \JsonSerializable
 {
     protected string $userId = '';
     protected string $tokenHash = '';
+    protected string $tokenMd5 = '';
     protected ?string $label = null;
     protected int $createdAt = 0;
     protected ?int $lastUsedAt = null;
