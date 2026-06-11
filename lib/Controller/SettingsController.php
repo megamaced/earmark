@@ -46,9 +46,11 @@ class SettingsController extends OCSController
     }
 
     #[NoAdminRequired]
-    public function setLastfm(string $username = ''): DataResponse
+    public function setLastfm(string $lastfmUsername = ''): DataResponse
     {
-        $this->importService->setUsername($this->userId(), $username);
+        // Param is `lastfmUsername`, not `username`: Nextcloud reserves the
+        // latter as a request parameter, so it never reaches this method.
+        $this->importService->setUsername($this->userId(), $lastfmUsername);
         return $this->getLastfm();
     }
 

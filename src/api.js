@@ -19,7 +19,9 @@ export const getListens = async (limit = 50, offset = 0) =>
 
 /* ── Last.fm settings ─────────────────────────────────────────────────── */
 export const getLastfm = async () => data(await axios.get(ocs('/settings/lastfm')))
-export const setLastfm = async (username) => data(await axios.post(ocs('/settings/lastfm'), { username }))
+// `lastfmUsername`, not `username`: Nextcloud reserves `username` as a request
+// param (login/basic-auth), so it never reaches the controller.
+export const setLastfm = async (username) => data(await axios.post(ocs('/settings/lastfm'), { lastfmUsername: username }))
 export const startImport = async () => data(await axios.post(ocs('/settings/lastfm/import')))
 
 /* ── Scrobble tokens ──────────────────────────────────────────────────── */
