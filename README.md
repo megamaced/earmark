@@ -8,7 +8,7 @@ Sibling to [Crate](https://github.com/megamaced/crate): *Crate catalogues what y
 
 ## Why it's lightweight
 
-Earmark rides entirely on Nextcloud's runtime, database, auth, cron and UI. There is no TimescaleDB, no Spark and no message broker — the marginal cost over an already-running Nextcloud is roughly one database table plus a background job. That low footprint is the whole point.
+Earmark runs entirely on Nextcloud's own runtime, database, auth, cron and UI — there are no extra services to deploy or maintain. On a server that already runs Nextcloud the added footprint is minimal, so it sits comfortably alongside everything else you self-host.
 
 ## Planned features
 
