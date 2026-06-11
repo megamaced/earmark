@@ -33,7 +33,7 @@ class AdminSettings implements IDeclarativeSettingsForm
                 [
                     'id'          => 'lastfm_api_key',
                     'title'       => 'Last.fm API key',
-                    'type'        => DeclarativeSettingsTypes::TEXT,
+                    'type'        => DeclarativeSettingsTypes::PASSWORD,
                     'placeholder' => 'e.g. 0123456789abcdef0123456789abcdef',
                     'default'     => '',
                 ],
