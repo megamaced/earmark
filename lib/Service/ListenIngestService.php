@@ -37,6 +37,9 @@ class ListenIngestService
         ?string $album,
         int $listenedAt,
         string $source,
+        ?string $artistMbid = null,
+        ?string $recordingMbid = null,
+        ?string $releaseMbid = null,
     ): bool {
         $artist = trim($artist);
         $track  = trim($track);
@@ -63,8 +66,22 @@ class ListenIngestService
         $listen->setDedupHash(Normalize::dedupHash($contentKey, $listenedAt));
         $listen->setListenedAt($listenedAt);
         $listen->setSource($source);
-        $listen->setResolutionState(Listen::STATE_PENDING);
         $listen->setCreatedAt($this->timeFactory->getTime());
+
+        // If the source already supplied MBIDs (e.g. Last.fm), store them and
+        // mark the listen resolved so the MusicBrainz resolver can skip it.
+        $artistMbid    = self::cleanMbid($artistMbid);
+        $recordingMbid = self::cleanMbid($recordingMbid);
+        $releaseMbid   = self::cleanMbid($releaseMbid);
+        if ($artistMbid !== null || $recordingMbid !== null || $releaseMbid !== null) {
+            $listen->setArtistMbid($artistMbid);
+            $listen->setRecordingMbid($recordingMbid);
+            $listen->setReleaseMbid($releaseMbid);
+            $listen->setResolutionState(Listen::STATE_RESOLVED);
+            $listen->setResolvedAt($this->timeFactory->getTime());
+        } else {
+            $listen->setResolutionState(Listen::STATE_PENDING);
+        }
 
         return $this->mapper->createIfNew($listen);
     }
@@ -72,5 +89,15 @@ class ListenIngestService
     private static function clamp(string $value): string
     {
         return mb_substr($value, 0, self::MAX_LEN);
+    }
+
+    /** Trim an MBID, returning null for empty/whitespace values. */
+    private static function cleanMbid(?string $mbid): ?string
+    {
+        if ($mbid === null) {
+            return null;
+        }
+        $mbid = trim($mbid);
+        return $mbid !== '' ? $mbid : null;
     }
 }
