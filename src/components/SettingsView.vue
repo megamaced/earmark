@@ -124,7 +124,11 @@ const starting = ref(false)
 const creating = ref(false)
 
 const stateLabel = computed(() => STATE_LABELS[lastfm.value.state] ?? lastfm.value.state)
-const canImport = computed(() => lastfm.value.hasApiKey && lastfm.value.username !== '')
+// Gate on having a username and not already backfilling. We intentionally do
+// NOT require hasApiKey here: that flag is fetched per page-load and the key is
+// set on a different (admin) page, so requiring it strands the button as stale.
+// The backend validates the key and returns a clear error if it's missing.
+const canImport = computed(() => (lastfm.value.username || '') !== '' && lastfm.value.state !== 'backfill')
 
 async function refresh() {
   try {

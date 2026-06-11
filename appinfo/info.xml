@@ -5,7 +5,7 @@
     <name>Earmark</name>
     <summary>Self-hosted scrobble store</summary>
     <description><![CDATA[Record what you listen to, on a server you control. Earmark is a lightweight self-hosted scrobble store: it accepts scrobbles from Last.fm-compatible clients, imports your full Last.fm and Spotify history, resolves listens to MusicBrainz, and shows your listening stats — all inside Nextcloud, with none of the heavy infrastructure a full ListenBrainz needs.]]></description>
-    <version>0.1.3</version>
+    <version>0.1.4</version>
     <licence>agpl</licence>
     <author mail="22581049+megamaced@users.noreply.github.com" homepage="https://github.com/megamaced/earmark">megamaced</author>
     <namespace>Earmark</namespace>
