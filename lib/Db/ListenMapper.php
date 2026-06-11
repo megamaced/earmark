@@ -150,4 +150,134 @@ class ListenMapper extends QBMapper
 
         return $qb->executeStatement();
     }
+
+    /**
+     * Top artists by play count.
+     *
+     * @return list<array{name: string, count: int}>
+     */
+    public function topArtists(string $userId, ?int $from, int $limit): array
+    {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('artist')
+            ->selectAlias($qb->func()->count('*'), 'cnt')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->groupBy('artist')
+            ->orderBy('cnt', 'DESC')
+            ->addOrderBy('artist', 'ASC')
+            ->setMaxResults($limit);
+        $this->applyFrom($qb, $from);
+
+        return array_map(
+            static fn (array $row): array => ['name' => (string) $row['artist'], 'count' => (int) $row['cnt']],
+            $this->fetchAll($qb),
+        );
+    }
+
+    /**
+     * Top tracks by play count.
+     *
+     * @return list<array{artist: string, track: string, count: int}>
+     */
+    public function topTracks(string $userId, ?int $from, int $limit): array
+    {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('artist', 'track')
+            ->selectAlias($qb->func()->count('*'), 'cnt')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->groupBy('artist', 'track')
+            ->orderBy('cnt', 'DESC')
+            ->addOrderBy('artist', 'ASC')
+            ->setMaxResults($limit);
+        $this->applyFrom($qb, $from);
+
+        return array_map(
+            static fn (array $row): array => [
+                'artist' => (string) $row['artist'],
+                'track'  => (string) $row['track'],
+                'count'  => (int) $row['cnt'],
+            ],
+            $this->fetchAll($qb),
+        );
+    }
+
+    /**
+     * Top albums by play count (rows without an album are excluded).
+     *
+     * @return list<array{artist: string, album: string, count: int}>
+     */
+    public function topAlbums(string $userId, ?int $from, int $limit): array
+    {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('artist', 'album')
+            ->selectAlias($qb->func()->count('*'), 'cnt')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->isNotNull('album'))
+            ->groupBy('artist', 'album')
+            ->orderBy('cnt', 'DESC')
+            ->addOrderBy('artist', 'ASC')
+            ->setMaxResults($limit);
+        $this->applyFrom($qb, $from);
+
+        return array_map(
+            static fn (array $row): array => [
+                'artist' => (string) $row['artist'],
+                'album'  => (string) $row['album'],
+                'count'  => (int) $row['cnt'],
+            ],
+            $this->fetchAll($qb),
+        );
+    }
+
+    /**
+     * Raw `listened_at` timestamps for a user since `from`, capped to bound
+     * memory — used to bucket the listening clock in PHP (portable across DBs).
+     *
+     * @return list<int>
+     */
+    public function listenedAtSince(string $userId, ?int $from, int $limit = 200000): array
+    {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('listened_at')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->setMaxResults($limit);
+        $this->applyFrom($qb, $from);
+
+        return array_map(static fn (array $row): int => (int) $row['listened_at'], $this->fetchAll($qb));
+    }
+
+    /** Oldest listen timestamp for a user, or null if they have none. */
+    public function getOldestListenedAt(string $userId): ?int
+    {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select($qb->func()->min('listened_at'))
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+
+        $result = $qb->executeQuery();
+        $value  = $result->fetchOne();
+        $result->closeCursor();
+
+        return ($value === false || $value === null) ? null : (int) $value;
+    }
+
+    private function applyFrom(IQueryBuilder $qb, ?int $from): void
+    {
+        if ($from !== null) {
+            $qb->andWhere($qb->expr()->gte('listened_at', $qb->createNamedParameter($from, IQueryBuilder::PARAM_INT)));
+        }
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function fetchAll(IQueryBuilder $qb): array
+    {
+        $result = $qb->executeQuery();
+        $rows   = $result->fetchAll();
+        $result->closeCursor();
+        return $rows;
+    }
 }

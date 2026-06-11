@@ -27,5 +27,11 @@ return [
         ['name' => 'settings#setLastfm',   'url' => '/api/v1/settings/lastfm',        'verb' => 'POST'],
         ['name' => 'settings#startImport', 'url' => '/api/v1/settings/lastfm/import', 'verb' => 'POST'],
         ['name' => 'settings#setApiKey',   'url' => '/api/v1/settings/lastfm/api-key', 'verb' => 'POST'],
+
+        // Read API — recent listens + stats (web UI / Android).
+        ['name' => 'api#listens', 'url' => '/api/v1/listens',      'verb' => 'GET'],
+        ['name' => 'api#top',     'url' => '/api/v1/stats/top',    'verb' => 'GET'],
+        ['name' => 'api#clock',   'url' => '/api/v1/stats/clock',  'verb' => 'GET'],
+        ['name' => 'api#totals',  'url' => '/api/v1/stats/totals', 'verb' => 'GET'],
     ],
 ];
