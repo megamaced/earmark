@@ -8,6 +8,7 @@ use OCA\Earmark\Db\Listen;
 use OCA\Earmark\Db\ListenMapper;
 use OCA\Earmark\Db\MbCacheEntry;
 use OCA\Earmark\Db\MbCacheMapper;
+use OCA\Earmark\Exception\MusicBrainzException;
 use OCA\Earmark\Service\MusicBrainzResolveService;
 use OCA\Earmark\Service\MusicBrainzService;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -108,6 +109,27 @@ class MusicBrainzResolveServiceTest extends TestCase
         $cacheMapper->method('insert')->willReturnArgument(0);
 
         $this->makeService($listenMapper, $cacheMapper, $musicBrainz)->runSlice();
+    }
+
+    public function testStopsRunOnRateLimit(): void
+    {
+        $a = $this->listen('ck1', 'A', 'One', null);
+        $b = $this->listen('ck2', 'B', 'Two', null);
+
+        $listenMapper = $this->createMock(ListenMapper::class);
+        $listenMapper->method('findByState')->willReturn([$a, $b]);
+        // A 429 stops the run before any resolution is applied.
+        $listenMapper->expects($this->never())->method('applyResolution');
+
+        $musicBrainz = $this->createMock(MusicBrainzService::class);
+        // Only the first key is attempted; the run breaks on the 429.
+        $musicBrainz->expects($this->once())->method('lookup')
+            ->willThrowException(new MusicBrainzException('rate limit', 429));
+
+        $cacheMapper = $this->createStub(MbCacheMapper::class);
+        $cacheMapper->method('findByKey')->willReturn(null);
+
+        self::assertSame(0, $this->makeService($listenMapper, $cacheMapper, $musicBrainz)->runSlice());
     }
 
     public function testNoPendingListensIsANoop(): void

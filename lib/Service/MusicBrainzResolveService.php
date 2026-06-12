@@ -8,6 +8,7 @@ use OCA\Earmark\Db\ListenMapper;
 use OCA\Earmark\Db\MbCacheEntry;
 use OCA\Earmark\Db\MbCacheMapper;
 use OCA\Earmark\Db\Listen;
+use OCA\Earmark\Exception\MusicBrainzException;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\DB\Exception;
 use Psr\Log\LoggerInterface;
@@ -65,24 +66,30 @@ class MusicBrainzResolveService
                 if ($lookups >= self::MAX_LOOKUPS_PER_RUN) {
                     break; // leave the rest pending for the next run
                 }
+                // Count every attempt (not just successes) so the per-run cap
+                // is always honoured, and throttle after every attempt.
+                $lookups++;
                 try {
                     $result = $this->musicBrainz->lookup(
                         $listen->getArtist(),
                         $listen->getTrack(),
                         $listen->getAlbum(),
                     );
-                } catch (\Throwable $e) {
+                } catch (MusicBrainzException $e) {
+                    if ($e->getCode() === 429) {
+                        // Rate limited — stop this run; the rest stay pending.
+                        $this->logger->warning('Earmark: MusicBrainz rate-limited, backing off until next run');
+                        break;
+                    }
                     $this->logger->warning('Earmark: MusicBrainz lookup error for {key}: {msg}', [
                         'key' => $contentKey,
                         'msg' => $e->getMessage(),
                     ]);
+                    $this->throttle();
                     continue; // stays pending; retried next run
                 }
                 $cache = $this->storeCache($contentKey, $result, $now);
-                $lookups++;
-                if ($this->throttleMicroseconds > 0) {
-                    usleep($this->throttleMicroseconds);
-                }
+                $this->throttle();
             }
 
             $state = $cache->getMatched() ? Listen::STATE_RESOLVED : Listen::STATE_UNMATCHED;
@@ -97,6 +104,13 @@ class MusicBrainzResolveService
         }
 
         return $updated;
+    }
+
+    private function throttle(): void
+    {
+        if ($this->throttleMicroseconds > 0) {
+            usleep($this->throttleMicroseconds);
+        }
     }
 
     /**

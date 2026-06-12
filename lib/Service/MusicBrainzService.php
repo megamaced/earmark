@@ -41,14 +41,25 @@ class MusicBrainzService
         }
 
         try {
+            // http_errors=false: handle status codes ourselves so a 429 is a
+            // signal to back off, not a thrown 4xx we'd retry into immediately.
             $response = $this->clientService->newClient()->get(self::LOOKUP_URL, [
-                'query'   => $query,
-                'timeout' => 30,
-                'headers' => ['User-Agent' => self::USER_AGENT],
+                'query'       => $query,
+                'timeout'     => 30,
+                'headers'     => ['User-Agent' => self::USER_AGENT],
+                'http_errors' => false,
             ]);
         } catch (\Throwable $e) {
-            $this->logger->warning('Earmark: MusicBrainz lookup failed: {msg}', ['msg' => $e->getMessage()]);
-            throw new MusicBrainzException('MusicBrainz lookup failed: ' . $e->getMessage(), 0, $e);
+            throw new MusicBrainzException('MusicBrainz request failed: ' . $e->getMessage(), 0, $e);
+        }
+
+        $status = $response->getStatusCode();
+        if ($status === 429) {
+            // Rate limited — the caller should stop for this run.
+            throw new MusicBrainzException('MusicBrainz rate limit exceeded', 429);
+        }
+        if ($status >= 400) {
+            throw new MusicBrainzException('MusicBrainz returned HTTP ' . $status, $status);
         }
 
         $decoded = json_decode((string) $response->getBody(), true);

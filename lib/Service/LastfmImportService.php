@@ -34,7 +34,7 @@ class LastfmImportService
     private const KEY_STATE = 'lastfm_import_state';
     private const KEY_CURSOR = 'lastfm_import_to';
 
-    private const PAGES_PER_RUN = 10;
+    private const PAGES_PER_RUN = 25;
     private const THROTTLE_MICROSECONDS = 250_000; // ~4 req/s, within Last.fm's limit
 
     public function __construct(
