@@ -7,7 +7,6 @@ namespace OCA\Earmark\Controller;
 use OCA\Earmark\Db\ListenMapper;
 use OCA\Earmark\Exception\LastfmException;
 use OCA\Earmark\Service\LastfmImportService;
-use OCA\Earmark\Service\LastfmService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
@@ -16,16 +15,16 @@ use OCP\IRequest;
 use OCP\IUserSession;
 
 /**
- * Settings + import control. User-scoped endpoints carry `#[NoAdminRequired]`;
- * the API-key endpoint omits it, so it is admin-only (the key is an
- * instance-wide credential).
+ * Per-user settings + import control. The Last.fm username and API key are
+ * per-user (each user supplies their own key); all endpoints are
+ * `#[NoAdminRequired]`. (Spotify's shared OAuth client will live in admin
+ * settings instead.)
  */
 class SettingsController extends OCSController
 {
     public function __construct(
         string $appName,
         IRequest $request,
-        private readonly LastfmService $lastfmService,
         private readonly LastfmImportService $importService,
         private readonly ListenMapper $listenMapper,
         private readonly IUserSession $userSession,
@@ -40,7 +39,7 @@ class SettingsController extends OCSController
         return new DataResponse([
             'username'    => $this->importService->getUsername($userId),
             'state'       => $this->importService->getState($userId),
-            'hasApiKey'   => $this->lastfmService->hasApiKey(),
+            'hasApiKey'   => $this->importService->hasApiKey($userId),
             'listenCount' => $this->listenMapper->countForUser($userId),
         ]);
     }
@@ -51,6 +50,13 @@ class SettingsController extends OCSController
         // Param is `lastfmUsername`, not `username`: Nextcloud reserves the
         // latter as a request parameter, so it never reaches this method.
         $this->importService->setUsername($this->userId(), $lastfmUsername);
+        return $this->getLastfm();
+    }
+
+    #[NoAdminRequired]
+    public function setApiKey(string $lastfmApiKey = ''): DataResponse
+    {
+        $this->importService->setApiKey($this->userId(), $lastfmApiKey);
         return $this->getLastfm();
     }
 

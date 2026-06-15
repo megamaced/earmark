@@ -5,22 +5,31 @@
     <!-- Last.fm import -->
     <section class="card">
       <h3>Last.fm import</h3>
-      <p
-        v-if="!lastfm.hasApiKey"
-        class="muted"
-      >
-        A Last.fm API key must be configured by an administrator (Settings →
-        Administration → Additional settings) before importing.
+      <p class="muted">
+        Enter your Last.fm username and your own API key (create one free at
+        <a
+          href="https://www.last.fm/api/account/create"
+          target="_blank"
+          rel="noopener noreferrer"
+        >last.fm/api</a>), then start the import.
       </p>
       <div class="field">
         <NcTextField
-          v-model:value="username"
+          v-model="username"
           label="Last.fm username"
           placeholder="your-lastfm-username"
         />
+      </div>
+      <div class="field">
+        <NcTextField
+          v-model="apiKey"
+          type="password"
+          label="Last.fm API key"
+          :placeholder="lastfm.hasApiKey ? '•••••••• (saved — paste to replace)' : 'your API key'"
+        />
         <NcButton
-          :disabled="savingUsername"
-          @click="saveUsername"
+          :disabled="saving"
+          @click="saveLastfm"
         >
           Save
         </NcButton>
@@ -48,7 +57,7 @@
 
       <div class="field">
         <NcTextField
-          v-model:value="newLabel"
+          v-model="newLabel"
           label="Label (e.g. Pano Scrobbler)"
         />
         <NcButton
@@ -106,7 +115,7 @@ import { ref, computed, onMounted } from 'vue'
 import { NcButton, NcTextField } from '@nextcloud/vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import {
-  getLastfm, setLastfm, startImport,
+  getLastfm, setLastfm, setApiKey, startImport,
   listTokens, createToken, deleteToken,
 } from '../api.js'
 import { formatNumber, relativeTime } from '../format.js'
@@ -115,20 +124,21 @@ const STATE_LABELS = { '': 'Not started', backfill: 'Importing…', done: 'Up to
 
 const lastfm = ref({ username: '', state: '', hasApiKey: false, listenCount: 0 })
 const username = ref('')
+const apiKey = ref('')
 const newLabel = ref('')
 const tokens = ref([])
 const freshToken = ref('')
 
-const savingUsername = ref(false)
+const saving = ref(false)
 const starting = ref(false)
 const creating = ref(false)
 
 const stateLabel = computed(() => STATE_LABELS[lastfm.value.state] ?? lastfm.value.state)
-// Gate on having a username and not already backfilling. We intentionally do
-// NOT require hasApiKey here: that flag is fetched per page-load and the key is
-// set on a different (admin) page, so requiring it strands the button as stale.
-// The backend validates the key and returns a clear error if it's missing.
-const canImport = computed(() => (lastfm.value.username || '') !== '' && lastfm.value.state !== 'backfill')
+// Username and key are both set in this panel, so requiring hasApiKey is safe
+// (no cross-page staleness) and gives clear gating.
+const canImport = computed(() =>
+  (lastfm.value.username || '') !== '' && lastfm.value.hasApiKey && lastfm.value.state !== 'backfill',
+)
 
 async function refresh() {
   try {
@@ -139,15 +149,21 @@ async function refresh() {
   }
 }
 
-async function saveUsername() {
-  savingUsername.value = true
+async function saveLastfm() {
+  saving.value = true
   try {
-    lastfm.value = await setLastfm(username.value)
-    showSuccess('Last.fm username saved')
+    await setLastfm(username.value)
+    // Only overwrite the key if a new one was typed (it's never prefilled).
+    if (apiKey.value.trim() !== '') {
+      await setApiKey(apiKey.value)
+      apiKey.value = ''
+    }
+    await refresh()
+    showSuccess('Last.fm settings saved')
   } catch {
-    showError('Failed to save username')
+    showError('Failed to save Last.fm settings')
   } finally {
-    savingUsername.value = false
+    saving.value = false
   }
 }
 

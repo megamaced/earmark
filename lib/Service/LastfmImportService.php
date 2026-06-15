@@ -15,6 +15,7 @@ use Psr\Log\LoggerInterface;
  * Drives the per-user Last.fm history import. State lives in user config:
  *
  *   lastfm_username      — the account to import from
+ *   lastfm_api_key       — the user's own Last.fm API key (per-user, not shared)
  *   lastfm_import_state  — '' (idle) | 'backfill' | 'done'
  *   lastfm_import_to     — backfill cursor: the upper `to` bound (Unix ts) for
  *                          the next fetch; walks newest→oldest, decreasing
@@ -31,6 +32,7 @@ class LastfmImportService
     public const STATE_DONE = 'done';
 
     private const KEY_USERNAME = 'lastfm_username';
+    private const KEY_API = 'lastfm_api_key';
     private const KEY_STATE = 'lastfm_import_state';
     private const KEY_CURSOR = 'lastfm_import_to';
 
@@ -56,6 +58,21 @@ class LastfmImportService
         $this->config->setUserValue($userId, Application::APP_ID, self::KEY_USERNAME, trim($username));
     }
 
+    public function getApiKey(string $userId): string
+    {
+        return $this->config->getUserValue($userId, Application::APP_ID, self::KEY_API, '');
+    }
+
+    public function setApiKey(string $userId, string $apiKey): void
+    {
+        $this->config->setUserValue($userId, Application::APP_ID, self::KEY_API, trim($apiKey));
+    }
+
+    public function hasApiKey(string $userId): bool
+    {
+        return $this->getApiKey($userId) !== '';
+    }
+
     public function getState(string $userId): string
     {
         return $this->config->getUserValue($userId, Application::APP_ID, self::KEY_STATE, self::STATE_IDLE);
@@ -63,7 +80,7 @@ class LastfmImportService
 
     public function isConfigured(string $userId): bool
     {
-        return $this->getUsername($userId) !== '' && $this->lastfm->hasApiKey();
+        return $this->getUsername($userId) !== '' && $this->hasApiKey($userId);
     }
 
     /** Begin (or restart) a full backfill for the user. */
@@ -105,12 +122,14 @@ class LastfmImportService
 
     private function runBackfillSlice(string $userId): int
     {
+        $apiKey   = $this->getApiKey($userId);
         $username = $this->getUsername($userId);
         $cursor   = (int) $this->config->getUserValue($userId, Application::APP_ID, self::KEY_CURSOR, '0');
         $stored   = 0;
 
         for ($i = 0; $i < self::PAGES_PER_RUN; $i++) {
             $result = $this->lastfm->fetchRecentTracks(
+                $apiKey,
                 $username,
                 1,
                 LastfmService::MAX_PAGE_SIZE,
@@ -146,7 +165,12 @@ class LastfmImportService
 
     private function runIncremental(string $userId): int
     {
-        $result = $this->lastfm->fetchRecentTracks($this->getUsername($userId), 1, LastfmService::MAX_PAGE_SIZE);
+        $result = $this->lastfm->fetchRecentTracks(
+            $this->getApiKey($userId),
+            $this->getUsername($userId),
+            1,
+            LastfmService::MAX_PAGE_SIZE,
+        );
         $stored = 0;
         foreach ($result['listens'] as $listen) {
             $stored += $this->store($userId, $listen) ? 1 : 0;

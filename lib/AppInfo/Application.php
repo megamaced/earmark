@@ -6,7 +6,6 @@ namespace OCA\Earmark\AppInfo;
 
 use OCA\Earmark\BackgroundJob\LastfmImportJob;
 use OCA\Earmark\BackgroundJob\MusicBrainzResolveJob;
-use OCA\Earmark\Settings\AdminSettings;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -30,7 +29,6 @@ class Application extends App implements IBootstrap
 
     public function register(IRegistrationContext $context): void
     {
-        $context->registerDeclarativeSettings(AdminSettings::class);
     }
 
     public function boot(IBootContext $context): void

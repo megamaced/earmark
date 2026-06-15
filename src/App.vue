@@ -12,6 +12,8 @@
           :active="view === 'recent'"
           @click="view = 'recent'"
         />
+      </template>
+      <template #footer>
         <NcAppNavigationItem
           name="Settings"
           :active="view === 'settings'"

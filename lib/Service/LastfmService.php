@@ -4,44 +4,25 @@ declare(strict_types=1);
 
 namespace OCA\Earmark\Service;
 
-use OCA\Earmark\AppInfo\Application;
 use OCA\Earmark\Exception\LastfmException;
 use OCA\Earmark\Scrobble\LastfmRecentTracks;
 use OCP\Http\Client\IClientService;
-use OCP\IConfig;
 use Psr\Log\LoggerInterface;
 
 /**
- * Thin client over the Last.fm `user.getRecentTracks` endpoint. The API key
- * is an instance-wide (admin) setting; the username is per-user and supplied
- * by {@see LastfmImportService}.
+ * Thin, stateless client over the Last.fm `user.getRecentTracks` endpoint.
+ * The API key and username are per-user and supplied by the caller
+ * ({@see LastfmImportService}).
  */
 class LastfmService
 {
     private const API_ROOT = 'https://ws.audioscrobbler.com/2.0/';
     public const MAX_PAGE_SIZE = 200;
-    private const API_KEY_CONFIG = 'lastfm_api_key';
 
     public function __construct(
         private readonly IClientService $clientService,
-        private readonly IConfig $config,
         private readonly LoggerInterface $logger,
     ) {
-    }
-
-    public function getApiKey(): string
-    {
-        return $this->config->getAppValue(Application::APP_ID, self::API_KEY_CONFIG, '');
-    }
-
-    public function hasApiKey(): bool
-    {
-        return $this->getApiKey() !== '';
-    }
-
-    public function setApiKey(string $apiKey): void
-    {
-        $this->config->setAppValue(Application::APP_ID, self::API_KEY_CONFIG, trim($apiKey));
     }
 
     /**
@@ -52,14 +33,14 @@ class LastfmService
      * @throws LastfmException
      */
     public function fetchRecentTracks(
+        string $apiKey,
         string $username,
         int $page = 1,
         int $limit = self::MAX_PAGE_SIZE,
         ?int $from = null,
         ?int $to = null,
     ): array {
-        $apiKey = $this->getApiKey();
-        if ($apiKey === '') {
+        if (trim($apiKey) === '') {
             throw new LastfmException('Last.fm API key is not configured');
         }
         if (trim($username) === '') {
