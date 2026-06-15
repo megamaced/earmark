@@ -41,12 +41,18 @@ class ListenMapper extends QBMapper
     }
 
     /**
-     * Most recent listens for a user, newest first.
+     * Most recent listens for a user, newest first, optionally bounded to a
+     * [from, to) listened-at window.
      *
      * @return Listen[]
      */
-    public function findRecent(string $userId, int $limit = 50, int $offset = 0): array
-    {
+    public function findRecent(
+        string $userId,
+        int $limit = 50,
+        int $offset = 0,
+        ?int $from = null,
+        ?int $to = null,
+    ): array {
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
@@ -55,6 +61,7 @@ class ListenMapper extends QBMapper
             ->addOrderBy('id', 'DESC')
             ->setMaxResults($limit)
             ->setFirstResult($offset);
+        $this->applyWindow($qb, $from, $to);
 
         return $this->findEntities($qb);
     }
@@ -156,7 +163,7 @@ class ListenMapper extends QBMapper
      *
      * @return list<array{name: string, count: int}>
      */
-    public function topArtists(string $userId, ?int $from, int $limit): array
+    public function topArtists(string $userId, ?int $from, ?int $to, int $limit, int $offset = 0): array
     {
         $qb = $this->db->getQueryBuilder();
         $qb->select('artist')
@@ -166,8 +173,9 @@ class ListenMapper extends QBMapper
             ->groupBy('artist')
             ->orderBy('cnt', 'DESC')
             ->addOrderBy('artist', 'ASC')
-            ->setMaxResults($limit);
-        $this->applyFrom($qb, $from);
+            ->setMaxResults($limit)
+            ->setFirstResult($offset);
+        $this->applyWindow($qb, $from, $to);
 
         return array_map(
             static fn (array $row): array => ['name' => (string) $row['artist'], 'count' => (int) $row['cnt']],
@@ -180,7 +188,7 @@ class ListenMapper extends QBMapper
      *
      * @return list<array{artist: string, track: string, count: int}>
      */
-    public function topTracks(string $userId, ?int $from, int $limit): array
+    public function topTracks(string $userId, ?int $from, ?int $to, int $limit, int $offset = 0): array
     {
         $qb = $this->db->getQueryBuilder();
         $qb->select('artist', 'track')
@@ -191,8 +199,9 @@ class ListenMapper extends QBMapper
             ->groupBy('artist', 'track')
             ->orderBy('cnt', 'DESC')
             ->addOrderBy('artist', 'ASC')
-            ->setMaxResults($limit);
-        $this->applyFrom($qb, $from);
+            ->setMaxResults($limit)
+            ->setFirstResult($offset);
+        $this->applyWindow($qb, $from, $to);
 
         return array_map(
             static fn (array $row): array => [
@@ -210,7 +219,7 @@ class ListenMapper extends QBMapper
      *
      * @return list<array{artist: string, album: string, count: int}>
      */
-    public function topAlbums(string $userId, ?int $from, int $limit): array
+    public function topAlbums(string $userId, ?int $from, ?int $to, int $limit, int $offset = 0): array
     {
         $qb = $this->db->getQueryBuilder();
         $qb->select('artist', 'album')
@@ -222,8 +231,9 @@ class ListenMapper extends QBMapper
             ->groupBy('artist', 'album')
             ->orderBy('cnt', 'DESC')
             ->addOrderBy('artist', 'ASC')
-            ->setMaxResults($limit);
-        $this->applyFrom($qb, $from);
+            ->setMaxResults($limit)
+            ->setFirstResult($offset);
+        $this->applyWindow($qb, $from, $to);
 
         return array_map(
             static fn (array $row): array => [
@@ -242,14 +252,14 @@ class ListenMapper extends QBMapper
      *
      * @return list<int>
      */
-    public function listenedAtSince(string $userId, ?int $from, int $limit = 200000): array
+    public function listenedAtSince(string $userId, ?int $from, ?int $to = null, int $limit = 200000): array
     {
         $qb = $this->db->getQueryBuilder();
         $qb->select('listened_at')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
             ->setMaxResults($limit);
-        $this->applyFrom($qb, $from);
+        $this->applyWindow($qb, $from, $to);
 
         return array_map(static fn (array $row): int => (int) $row['listened_at'], $this->fetchAll($qb));
     }
@@ -269,10 +279,14 @@ class ListenMapper extends QBMapper
         return ($value === false || $value === null) ? null : (int) $value;
     }
 
-    private function applyFrom(IQueryBuilder $qb, ?int $from): void
+    /** Constrain a query to a [from, to) listened-at window; null bounds are open. */
+    private function applyWindow(IQueryBuilder $qb, ?int $from, ?int $to): void
     {
         if ($from !== null) {
             $qb->andWhere($qb->expr()->gte('listened_at', $qb->createNamedParameter($from, IQueryBuilder::PARAM_INT)));
+        }
+        if ($to !== null) {
+            $qb->andWhere($qb->expr()->lt('listened_at', $qb->createNamedParameter($to, IQueryBuilder::PARAM_INT)));
         }
     }
 

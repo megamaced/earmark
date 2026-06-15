@@ -10,7 +10,8 @@ namespace OCA\Earmark\Stats;
  */
 final class Range
 {
-    public const RANGES = ['7d', '30d', '90d', 'year', 'all'];
+    // 'year' is kept as an alias of '365d' for the existing Overview UI.
+    public const RANGES = ['7d', '30d', '90d', '180d', '365d', 'year', 'all'];
 
     private const DAY = 86400;
 
@@ -18,11 +19,12 @@ final class Range
     public static function fromTimestamp(string $range, int $now): ?int
     {
         return match ($range) {
-            '7d'   => $now - 7 * self::DAY,
-            '30d'  => $now - 30 * self::DAY,
-            '90d'  => $now - 90 * self::DAY,
-            'year' => $now - 365 * self::DAY,
-            default => null,
+            '7d'           => $now - 7 * self::DAY,
+            '30d'          => $now - 30 * self::DAY,
+            '90d'          => $now - 90 * self::DAY,
+            '180d'         => $now - 180 * self::DAY,
+            '365d', 'year' => $now - 365 * self::DAY,
+            default        => null,
         };
     }
 

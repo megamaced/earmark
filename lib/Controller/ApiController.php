@@ -31,32 +31,59 @@ class ApiController extends OCSController
     }
 
     #[NoAdminRequired]
-    public function listens(int $limit = 50, int $offset = 0): DataResponse
-    {
+    public function listens(
+        int $limit = 50,
+        int $offset = 0,
+        string $range = 'all',
+        int $from = 0,
+        int $to = 0,
+    ): DataResponse {
         $limit  = max(1, min($limit, self::MAX_LIMIT));
         $offset = max(0, $offset);
+        [$lo, $hi] = $this->statsService->window($range, self::nz($from), self::nz($to));
 
-        $listens = $this->listenMapper->findRecent($this->userId(), $limit, $offset);
+        $listens = $this->listenMapper->findRecent($this->userId(), $limit, $offset, $lo, $hi);
         return new DataResponse(array_map(static fn ($l) => $l->jsonSerialize(), $listens));
     }
 
     #[NoAdminRequired]
-    public function top(string $type = 'artist', string $range = 'all', int $limit = 20): DataResponse
-    {
-        $limit = max(1, min($limit, 100));
-        return new DataResponse($this->statsService->top($this->userId(), $type, $range, $limit));
+    public function top(
+        string $type = 'artist',
+        string $range = 'all',
+        int $limit = 20,
+        int $offset = 0,
+        int $from = 0,
+        int $to = 0,
+    ): DataResponse {
+        $limit  = max(1, min($limit, 100));
+        $offset = max(0, $offset);
+        return new DataResponse(
+            $this->statsService->top($this->userId(), $type, $range, $limit, $offset, self::nz($from), self::nz($to)),
+        );
     }
 
     #[NoAdminRequired]
-    public function clock(string $range = 'all'): DataResponse
+    public function clock(string $range = 'all', int $from = 0, int $to = 0): DataResponse
     {
-        return new DataResponse($this->statsService->clock($this->userId(), $range));
+        return new DataResponse($this->statsService->clock($this->userId(), $range, self::nz($from), self::nz($to)));
     }
 
     #[NoAdminRequired]
     public function totals(): DataResponse
     {
         return new DataResponse($this->statsService->totals($this->userId()));
+    }
+
+    #[NoAdminRequired]
+    public function years(): DataResponse
+    {
+        return new DataResponse($this->statsService->perYear($this->userId()));
+    }
+
+    /** Treat 0 (an absent query param) as "no bound". */
+    private static function nz(int $value): ?int
+    {
+        return $value > 0 ? $value : null;
     }
 
     private function userId(): string

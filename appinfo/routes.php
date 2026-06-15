@@ -36,5 +36,6 @@ return [
         ['name' => 'api#top',     'url' => '/api/v1/stats/top',    'verb' => 'GET'],
         ['name' => 'api#clock',   'url' => '/api/v1/stats/clock',  'verb' => 'GET'],
         ['name' => 'api#totals',  'url' => '/api/v1/stats/totals', 'verb' => 'GET'],
+        ['name' => 'api#years',   'url' => '/api/v1/stats/years',  'verb' => 'GET'],
     ],
 ];

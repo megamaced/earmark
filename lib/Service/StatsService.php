@@ -22,16 +22,27 @@ class StatsService
     }
 
     /**
+     * Top artists/albums/tracks for a user. A range keyword sets the window,
+     * unless explicit `from`/`to` timestamps are given (the custom range used
+     * by the Library), in which case they take precedence.
+     *
      * @return array<int, array<string, mixed>>
      */
-    public function top(string $userId, string $type, string $range, int $limit = 20): array
-    {
-        $from = Range::fromTimestamp(Range::normalize($range), $this->timeFactory->getTime());
+    public function top(
+        string $userId,
+        string $type,
+        string $range,
+        int $limit = 20,
+        int $offset = 0,
+        ?int $from = null,
+        ?int $to = null,
+    ): array {
+        [$lo, $hi] = $this->window($range, $from, $to);
 
         return match ($type) {
-            'artist' => $this->listenMapper->topArtists($userId, $from, $limit),
-            'album'  => $this->listenMapper->topAlbums($userId, $from, $limit),
-            'track'  => $this->listenMapper->topTracks($userId, $from, $limit),
+            'artist' => $this->listenMapper->topArtists($userId, $lo, $hi, $limit, $offset),
+            'album'  => $this->listenMapper->topAlbums($userId, $lo, $hi, $limit, $offset),
+            'track'  => $this->listenMapper->topTracks($userId, $lo, $hi, $limit, $offset),
             default  => [],
         };
     }
@@ -41,17 +52,55 @@ class StatsService
      *
      * @return list<int>
      */
-    public function clock(string $userId, string $range): array
+    public function clock(string $userId, string $range, ?int $from = null, ?int $to = null): array
     {
-        $from = Range::fromTimestamp(Range::normalize($range), $this->timeFactory->getTime());
+        [$lo, $hi] = $this->window($range, $from, $to);
 
         $buckets = array_fill(0, 24, 0);
-        foreach ($this->listenMapper->listenedAtSince($userId, $from) as $timestamp) {
+        foreach ($this->listenMapper->listenedAtSince($userId, $lo, $hi) as $timestamp) {
             $hour = (int) gmdate('G', $timestamp);
             $buckets[$hour]++;
         }
 
         return $buckets;
+    }
+
+    /**
+     * Scrobble counts per calendar year (UTC), oldest first — the Library's
+     * lifetime breakdown chart. Bucketed in PHP to stay DB-portable.
+     *
+     * @return list<array{year: int, count: int}>
+     */
+    public function perYear(string $userId): array
+    {
+        $buckets = [];
+        foreach ($this->listenMapper->listenedAtSince($userId, null) as $timestamp) {
+            $year = (int) gmdate('Y', $timestamp);
+            $buckets[$year] = ($buckets[$year] ?? 0) + 1;
+        }
+        ksort($buckets);
+
+        $out = [];
+        foreach ($buckets as $year => $count) {
+            $out[] = ['year' => $year, 'count' => $count];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Resolve a stats window to [from, to] timestamps. Explicit bounds (custom
+     * range) win; otherwise the range keyword sets a lower bound with no upper.
+     *
+     * @return array{0: int|null, 1: int|null}
+     */
+    public function window(string $range, ?int $from, ?int $to): array
+    {
+        if ($from !== null || $to !== null) {
+            return [$from, $to];
+        }
+
+        return [Range::fromTimestamp(Range::normalize($range), $this->timeFactory->getTime()), null];
     }
 
     /**

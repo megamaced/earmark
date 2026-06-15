@@ -57,6 +57,38 @@ class StatsServiceTest extends TestCase
         self::assertSame([], $this->service($mapper)->top('alice', 'bogus', 'all'));
     }
 
+    public function testPerYearBucketsByCalendarYearUtc(): void
+    {
+        $mapper = $this->createStub(ListenMapper::class);
+        $mapper->method('listenedAtSince')->willReturn([
+            1_700_000_000,        // 2023
+            1_700_000_100,        // 2023
+            1_600_000_000,        // 2020
+            86400,                // 1970
+        ]);
+
+        $years = $this->service($mapper)->perYear('alice');
+
+        self::assertSame([
+            ['year' => 1970, 'count' => 1],
+            ['year' => 2020, 'count' => 1],
+            ['year' => 2023, 'count' => 2],
+        ], $years);
+    }
+
+    public function testWindowPrefersExplicitBoundsOverRange(): void
+    {
+        $service = $this->service($this->createStub(ListenMapper::class));
+
+        // Explicit bounds win.
+        self::assertSame([100, 200], $service->window('all', 100, 200));
+        // A single explicit bound still counts as custom (the other stays open).
+        self::assertSame([100, null], $service->window('30d', 100, null));
+        // No explicit bounds → derive lower bound from the range keyword.
+        self::assertSame([1_700_000_000 - 7 * 86400, null], $service->window('7d', null, null));
+        self::assertSame([null, null], $service->window('all', null, null));
+    }
+
     public function testTotals(): void
     {
         $mapper = $this->createStub(ListenMapper::class);

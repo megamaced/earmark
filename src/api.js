@@ -12,13 +12,16 @@ const data = (res) => res.data?.ocs?.data
 export const releaseArtUrl = (mbid) => generateUrl('/apps/earmark/art/release/' + encodeURIComponent(mbid))
 
 /* ── Stats + listens ──────────────────────────────────────────────────── */
+// `window` is an optional { from, to } (Unix seconds) object for a custom
+// range; when present it overrides the `range` keyword server-side.
 export const getTotals = async () => data(await axios.get(ocs('/stats/totals')))
-export const getTop = async (type, range, limit = 20) =>
-  data(await axios.get(ocs('/stats/top'), { params: { type, range, limit } }))
-export const getClock = async (range) =>
-  data(await axios.get(ocs('/stats/clock'), { params: { range } }))
-export const getListens = async (limit = 50, offset = 0) =>
-  data(await axios.get(ocs('/listens'), { params: { limit, offset } }))
+export const getYears = async () => data(await axios.get(ocs('/stats/years')))
+export const getTop = async (type, range, limit = 20, offset = 0, window = {}) =>
+  data(await axios.get(ocs('/stats/top'), { params: { type, range, limit, offset, ...window } }))
+export const getClock = async (range, window = {}) =>
+  data(await axios.get(ocs('/stats/clock'), { params: { range, ...window } }))
+export const getListens = async (limit = 50, offset = 0, window = {}) =>
+  data(await axios.get(ocs('/listens'), { params: { limit, offset, ...window } }))
 
 /* ── Last.fm settings ─────────────────────────────────────────────────── */
 export const getLastfm = async () => data(await axios.get(ocs('/settings/lastfm')))
