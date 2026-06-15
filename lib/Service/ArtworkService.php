@@ -21,8 +21,12 @@ use Psr\Log\LoggerInterface;
 class ArtworkService
 {
     private const CAA_URL = 'https://coverartarchive.org/release/%s/front-250';
-    private const USER_AGENT = 'Earmark/0.2.0 ( https://github.com/megamaced/earmark )';
-    private const CACHE_FOLDER = 'release-art';
+    private const CAA_RG_URL = 'https://coverartarchive.org/release-group/%s/front-250';
+    private const MB_RG_URL = 'https://musicbrainz.org/ws/2/release/%s?inc=release-groups&fmt=json';
+    private const USER_AGENT = 'Earmark/0.2.1 ( https://github.com/megamaced/earmark )';
+    // Bumped to -v2 when release-group fallback was added, so releases that
+    // were negatively cached under the release-only logic get re-attempted.
+    private const CACHE_FOLDER = 'release-art-v2';
 
     public function __construct(
         private readonly IClientService $clientService,
@@ -61,8 +65,28 @@ class ArtworkService
 
     private function fetch(string $mbid): ?string
     {
+        // First try the exact release. If that pressing has no front cover,
+        // fall back to its release-group, which aggregates art across every
+        // edition of the album and is usually populated even when a specific
+        // release is not.
+        $cover = $this->getImage(sprintf(self::CAA_URL, $mbid));
+        if ($cover !== null) {
+            return $cover;
+        }
+
+        $rgid = $this->releaseGroupId($mbid);
+        if ($rgid !== null) {
+            return $this->getImage(sprintf(self::CAA_RG_URL, $rgid));
+        }
+
+        return null;
+    }
+
+    /** GET an image URL from the Cover Art Archive, following its redirect. */
+    private function getImage(string $url): ?string
+    {
         try {
-            $response = $this->clientService->newClient()->get(sprintf(self::CAA_URL, $mbid), [
+            $response = $this->clientService->newClient()->get($url, [
                 'timeout'     => 20,
                 'http_errors' => false,
                 'headers'     => ['User-Agent' => self::USER_AGENT],
@@ -73,11 +97,38 @@ class ArtworkService
         }
 
         if ($response->getStatusCode() !== 200) {
-            return null; // 404 = no front cover for this release
+            return null; // 404 = no front cover
         }
 
         $body = (string) $response->getBody();
         return $body !== '' ? $body : null;
+    }
+
+    /**
+     * Resolve a release MBID to its release-group MBID via MusicBrainz, so we
+     * can fall back to group-level cover art. Returns null on any failure.
+     */
+    private function releaseGroupId(string $mbid): ?string
+    {
+        try {
+            $response = $this->clientService->newClient()->get(sprintf(self::MB_RG_URL, $mbid), [
+                'timeout'     => 20,
+                'http_errors' => false,
+                'headers'     => ['User-Agent' => self::USER_AGENT],
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->warning('Earmark: release-group lookup failed: {msg}', ['msg' => $e->getMessage()]);
+            return null;
+        }
+
+        if ($response->getStatusCode() !== 200) {
+            return null;
+        }
+
+        $decoded = json_decode((string) $response->getBody(), true);
+        $rgid    = $decoded['release-group']['id'] ?? null;
+
+        return is_string($rgid) && self::isUuid($rgid) ? $rgid : null;
     }
 
     private function cache(ISimpleFolder $folder, string $mbid, string $content): void
