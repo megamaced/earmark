@@ -36,5 +36,16 @@ class LastfmImportJob extends TimedJob
                 ]);
             }
         }
+
+        foreach ($this->importService->usersWithPendingLovedImport() as $userId) {
+            try {
+                $this->importService->runLovedSlice($userId);
+            } catch (\Throwable $e) {
+                $this->logger->warning('Earmark: loved-tracks import slice failed for {user}: {msg}', [
+                    'user' => $userId,
+                    'msg'  => $e->getMessage(),
+                ]);
+            }
+        }
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Earmark\Controller;
 
 use OCA\Earmark\Db\ListenMapper;
+use OCA\Earmark\Db\LovedMapper;
 use OCA\Earmark\Exception\LastfmException;
 use OCA\Earmark\Service\LastfmImportService;
 use OCP\AppFramework\Http;
@@ -27,6 +28,7 @@ class SettingsController extends OCSController
         IRequest $request,
         private readonly LastfmImportService $importService,
         private readonly ListenMapper $listenMapper,
+        private readonly LovedMapper $lovedMapper,
         private readonly IUserSession $userSession,
     ) {
         parent::__construct($appName, $request);
@@ -41,6 +43,8 @@ class SettingsController extends OCSController
             'state'       => $this->importService->getState($userId),
             'hasApiKey'   => $this->importService->hasApiKey($userId),
             'listenCount' => $this->listenMapper->countForUser($userId),
+            'lovedState'  => $this->importService->getLovedState($userId),
+            'lovedCount'  => $this->lovedMapper->countForUser($userId),
         ]);
     }
 
@@ -65,6 +69,17 @@ class SettingsController extends OCSController
     {
         try {
             $this->importService->startBackfill($this->userId());
+        } catch (LastfmException $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+        }
+        return $this->getLastfm();
+    }
+
+    #[NoAdminRequired]
+    public function startLovedImport(): DataResponse
+    {
+        try {
+            $this->importService->startLovedImport($this->userId());
         } catch (LastfmException $e) {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
         }

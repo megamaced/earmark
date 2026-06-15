@@ -5,17 +5,21 @@ declare(strict_types=1);
 namespace OCA\Earmark\Tests\Unit;
 
 use OCA\Earmark\Db\ListenMapper;
+use OCA\Earmark\Db\LovedMapper;
 use OCA\Earmark\Service\StatsService;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\TestCase;
 
 class StatsServiceTest extends TestCase
 {
+    private ?LovedMapper $lovedMapper = null;
+
     private function service(ListenMapper $mapper): StatsService
     {
         $time = $this->createStub(ITimeFactory::class);
         $time->method('getTime')->willReturn(1_700_000_000);
-        return new StatsService($mapper, $time);
+        $loved = $this->lovedMapper ?? $this->createStub(LovedMapper::class);
+        return new StatsService($mapper, $loved, $time);
     }
 
     public function testClockBucketsByHourOfDayUtc(): void
@@ -96,8 +100,11 @@ class StatsServiceTest extends TestCase
         $mapper->method('countDistinctArtists')->willReturn(45);
         $mapper->method('getOldestListenedAt')->willReturn(1_600_000_000);
 
+        $this->lovedMapper = $this->createStub(LovedMapper::class);
+        $this->lovedMapper->method('countForUser')->willReturn(7);
+
         self::assertSame(
-            ['listens' => 123, 'artists' => 45, 'since' => 1_600_000_000],
+            ['listens' => 123, 'artists' => 45, 'loved' => 7, 'since' => 1_600_000_000],
             $this->service($mapper)->totals('alice'),
         );
     }

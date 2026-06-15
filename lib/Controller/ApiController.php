@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Earmark\Controller;
 
 use OCA\Earmark\Db\ListenMapper;
+use OCA\Earmark\Db\LovedMapper;
 use OCA\Earmark\Service\StatsService;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
@@ -24,6 +25,7 @@ class ApiController extends OCSController
         string $appName,
         IRequest $request,
         private readonly ListenMapper $listenMapper,
+        private readonly LovedMapper $lovedMapper,
         private readonly StatsService $statsService,
         private readonly IUserSession $userSession,
     ) {
@@ -78,6 +80,16 @@ class ApiController extends OCSController
     public function years(): DataResponse
     {
         return new DataResponse($this->statsService->perYear($this->userId()));
+    }
+
+    #[NoAdminRequired]
+    public function loved(int $limit = 50, int $offset = 0): DataResponse
+    {
+        $limit  = max(1, min($limit, self::MAX_LIMIT));
+        $offset = max(0, $offset);
+
+        $loved = $this->lovedMapper->findForUser($this->userId(), $limit, $offset);
+        return new DataResponse(array_map(static fn ($l) => $l->jsonSerialize(), $loved));
     }
 
     /** Treat 0 (an absent query param) as "no bound". */

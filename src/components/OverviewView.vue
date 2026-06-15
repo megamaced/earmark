@@ -25,6 +25,13 @@
         <span class="stat__label">artists</span>
       </div>
       <div
+        v-if="totals.loved"
+        class="stat"
+      >
+        <span class="stat__num">{{ formatNumber(totals.loved) }}</span>
+        <span class="stat__label">loved</span>
+      </div>
+      <div
         v-if="totals.since"
         class="stat"
       >
@@ -166,7 +173,7 @@ const TYPES = [
 
 const range = ref('30d')
 const type = ref('artist')
-const totals = ref({ listens: 0, artists: 0, since: null })
+const totals = ref({ listens: 0, artists: 0, loved: 0, since: null })
 const recent = ref([])
 const top = ref([])
 const clock = ref(new Array(24).fill(0))
@@ -216,7 +223,7 @@ function setType(value) {
 onMounted(async () => {
   try {
     const [t, r] = await Promise.all([getTotals(), getListens(10, 0)])
-    totals.value = t ?? { listens: 0, artists: 0, since: null }
+    totals.value = t ?? { listens: 0, artists: 0, loved: 0, since: null }
     recent.value = Array.isArray(r) ? r : []
   } catch (e) {
     console.error('[Earmark] failed to load totals', e)

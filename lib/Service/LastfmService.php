@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Earmark\Service;
 
 use OCA\Earmark\Exception\LastfmException;
+use OCA\Earmark\Scrobble\LastfmLovedTracks;
 use OCA\Earmark\Scrobble\LastfmRecentTracks;
 use OCP\Http\Client\IClientService;
 use Psr\Log\LoggerInterface;
@@ -78,5 +79,56 @@ class LastfmService
         }
 
         return LastfmRecentTracks::parse($decoded);
+    }
+
+    /**
+     * Fetch one page of a user's loved tracks (newest-loved first).
+     *
+     * @return array{
+     *     page: int,
+     *     totalPages: int,
+     *     total: int,
+     *     loved: list<array{artist: string, track: string, recordingMbid: ?string, lovedAt: int}>
+     * }
+     * @throws LastfmException
+     */
+    public function fetchLovedTracks(
+        string $apiKey,
+        string $username,
+        int $page = 1,
+        int $limit = self::MAX_PAGE_SIZE,
+    ): array {
+        if (trim($apiKey) === '') {
+            throw new LastfmException('Last.fm API key is not configured');
+        }
+        if (trim($username) === '') {
+            throw new LastfmException('Last.fm username is not set');
+        }
+
+        $query = [
+            'method'  => 'user.getlovedtracks',
+            'user'    => $username,
+            'api_key' => $apiKey,
+            'format'  => 'json',
+            'limit'   => (string) max(1, min($limit, self::MAX_PAGE_SIZE)),
+            'page'    => (string) max(1, $page),
+        ];
+
+        try {
+            $response = $this->clientService->newClient()->get(self::API_ROOT, [
+                'query'   => $query,
+                'timeout' => 30,
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->warning('Earmark: Last.fm loved request failed: {msg}', ['msg' => $e->getMessage()]);
+            throw new LastfmException('Last.fm request failed: ' . $e->getMessage(), 0, $e);
+        }
+
+        $decoded = json_decode((string) $response->getBody(), true);
+        if (!is_array($decoded)) {
+            throw new LastfmException('invalid JSON in Last.fm response');
+        }
+
+        return LastfmLovedTracks::parse($decoded);
     }
 }

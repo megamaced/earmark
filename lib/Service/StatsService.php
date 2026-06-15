@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Earmark\Service;
 
 use OCA\Earmark\Db\ListenMapper;
+use OCA\Earmark\Db\LovedMapper;
 use OCA\Earmark\Stats\Range;
 use OCP\AppFramework\Utility\ITimeFactory;
 
@@ -17,6 +18,7 @@ class StatsService
 {
     public function __construct(
         private readonly ListenMapper $listenMapper,
+        private readonly LovedMapper $lovedMapper,
         private readonly ITimeFactory $timeFactory,
     ) {
     }
@@ -104,13 +106,14 @@ class StatsService
     }
 
     /**
-     * @return array{listens: int, artists: int, since: int|null}
+     * @return array{listens: int, artists: int, loved: int, since: int|null}
      */
     public function totals(string $userId): array
     {
         return [
             'listens' => $this->listenMapper->countForUser($userId),
             'artists' => $this->listenMapper->countDistinctArtists($userId),
+            'loved'   => $this->lovedMapper->countForUser($userId),
             'since'   => $this->listenMapper->getOldestListenedAt($userId),
         ];
     }

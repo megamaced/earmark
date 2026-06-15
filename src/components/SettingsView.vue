@@ -45,6 +45,17 @@
       >
         {{ lastfm.state === 'backfill' ? 'Import running…' : 'Start full import' }}
       </NcButton>
+
+      <div class="import-status import-status--loved">
+        <span>Loved tracks: <strong>{{ lovedStateLabel }}</strong></span>
+        <span class="muted">· {{ formatNumber(lastfm.lovedCount) }} loved</span>
+      </div>
+      <NcButton
+        :disabled="!canImportLoved || startingLoved"
+        @click="triggerLovedImport"
+      >
+        {{ lastfm.lovedState === 'pending' ? 'Importing loved…' : 'Import loved tracks' }}
+      </NcButton>
     </section>
 
     <!-- Scrobble tokens -->
@@ -115,14 +126,15 @@ import { ref, computed, onMounted } from 'vue'
 import { NcButton, NcTextField } from '@nextcloud/vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import {
-  getLastfm, setLastfm, setApiKey, startImport,
+  getLastfm, setLastfm, setApiKey, startImport, startLovedImport,
   listTokens, createToken, deleteToken,
 } from '../api.js'
 import { formatNumber, relativeTime } from '../format.js'
 
 const STATE_LABELS = { '': 'Not started', backfill: 'Importing…', done: 'Up to date' }
+const LOVED_STATE_LABELS = { '': 'Not imported', pending: 'Importing…', done: 'Imported' }
 
-const lastfm = ref({ username: '', state: '', hasApiKey: false, listenCount: 0 })
+const lastfm = ref({ username: '', state: '', hasApiKey: false, listenCount: 0, lovedState: '', lovedCount: 0 })
 const username = ref('')
 const apiKey = ref('')
 const newLabel = ref('')
@@ -131,13 +143,18 @@ const freshToken = ref('')
 
 const saving = ref(false)
 const starting = ref(false)
+const startingLoved = ref(false)
 const creating = ref(false)
 
 const stateLabel = computed(() => STATE_LABELS[lastfm.value.state] ?? lastfm.value.state)
+const lovedStateLabel = computed(() => LOVED_STATE_LABELS[lastfm.value.lovedState] ?? lastfm.value.lovedState)
 // Username and key are both set in this panel, so requiring hasApiKey is safe
 // (no cross-page staleness) and gives clear gating.
 const canImport = computed(() =>
   (lastfm.value.username || '') !== '' && lastfm.value.hasApiKey && lastfm.value.state !== 'backfill',
+)
+const canImportLoved = computed(() =>
+  (lastfm.value.username || '') !== '' && lastfm.value.hasApiKey && lastfm.value.lovedState !== 'pending',
 )
 
 async function refresh() {
@@ -176,6 +193,18 @@ async function triggerImport() {
     showError(e?.response?.data?.ocs?.data?.error || 'Failed to start import')
   } finally {
     starting.value = false
+  }
+}
+
+async function triggerLovedImport() {
+  startingLoved.value = true
+  try {
+    lastfm.value = await startLovedImport()
+    showSuccess('Loved-tracks import started — it runs in the background')
+  } catch (e) {
+    showError(e?.response?.data?.ocs?.data?.error || 'Failed to start loved import')
+  } finally {
+    startingLoved.value = false
   }
 }
 
@@ -251,6 +280,11 @@ onMounted(() => {
 }
 .import-status {
   margin: 10px 0 14px;
+}
+.import-status--loved {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
 }
 .fresh-token {
   margin: 12px 0;

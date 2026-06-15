@@ -28,8 +28,9 @@ return [
         // Settings + Last.fm import control.
         ['name' => 'settings#getLastfm',   'url' => '/api/v1/settings/lastfm',         'verb' => 'GET'],
         ['name' => 'settings#setLastfm',   'url' => '/api/v1/settings/lastfm',         'verb' => 'POST'],
-        ['name' => 'settings#setApiKey',   'url' => '/api/v1/settings/lastfm/api-key', 'verb' => 'POST'],
-        ['name' => 'settings#startImport', 'url' => '/api/v1/settings/lastfm/import',  'verb' => 'POST'],
+        ['name' => 'settings#setApiKey',        'url' => '/api/v1/settings/lastfm/api-key',      'verb' => 'POST'],
+        ['name' => 'settings#startImport',      'url' => '/api/v1/settings/lastfm/import',       'verb' => 'POST'],
+        ['name' => 'settings#startLovedImport', 'url' => '/api/v1/settings/lastfm/import-loved', 'verb' => 'POST'],
 
         // Read API — recent listens + stats (web UI / Android).
         ['name' => 'api#listens', 'url' => '/api/v1/listens',      'verb' => 'GET'],
@@ -37,5 +38,6 @@ return [
         ['name' => 'api#clock',   'url' => '/api/v1/stats/clock',  'verb' => 'GET'],
         ['name' => 'api#totals',  'url' => '/api/v1/stats/totals', 'verb' => 'GET'],
         ['name' => 'api#years',   'url' => '/api/v1/stats/years',  'verb' => 'GET'],
+        ['name' => 'api#loved',   'url' => '/api/v1/loved',        'verb' => 'GET'],
     ],
 ];

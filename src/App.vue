@@ -17,6 +17,11 @@
           :active="view === 'library'"
           @click="view = 'library'"
         />
+        <NcAppNavigationItem
+          name="Loved"
+          :active="view === 'loved'"
+          @click="view = 'loved'"
+        />
       </template>
       <template #footer>
         <NcAppNavigationItem
@@ -31,6 +36,7 @@
       <OverviewView v-if="view === 'overview'" />
       <RecentView v-else-if="view === 'recent'" />
       <LibraryView v-else-if="view === 'library'" />
+      <LovedView v-else-if="view === 'loved'" />
       <SettingsView v-else-if="view === 'settings'" />
     </NcAppContent>
   </NcContent>
@@ -42,6 +48,7 @@ import { NcContent, NcAppContent, NcAppNavigation, NcAppNavigationItem } from '@
 import OverviewView from './components/OverviewView.vue'
 import RecentView from './components/RecentView.vue'
 import LibraryView from './components/LibraryView.vue'
+import LovedView from './components/LovedView.vue'
 import SettingsView from './components/SettingsView.vue'
 
 const view = ref('overview')
