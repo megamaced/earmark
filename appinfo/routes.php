@@ -15,6 +15,9 @@ return [
         ['name' => 'audioScrobbler#handshake',  'url' => '/scrobble',        'verb' => 'GET'],
         ['name' => 'audioScrobbler#nowPlaying', 'url' => '/scrobble/np',     'verb' => 'POST'],
         ['name' => 'audioScrobbler#submit',     'url' => '/scrobble/submit', 'verb' => 'POST'],
+
+        // Release cover art (proxied + cached from Cover Art Archive), loaded via <img>.
+        ['name' => 'art#release', 'url' => '/art/release/{mbid}', 'verb' => 'GET'],
     ],
     'ocs' => [
         // Per-user scrobble tokens — Nextcloud-authenticated, used by the settings UI.

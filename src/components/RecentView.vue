@@ -24,6 +24,15 @@
         :key="listen.id"
         class="listen"
       >
+        <span class="listen__art">
+          <img
+            v-if="listen.releaseMbid"
+            :src="releaseArtUrl(listen.releaseMbid)"
+            alt=""
+            loading="lazy"
+            @error="$event.target.style.visibility = 'hidden'"
+          >
+        </span>
         <div class="listen__main">
           <strong class="listen__track">{{ listen.track }}</strong>
           <span class="listen__artist">{{ listen.artist }}</span>
@@ -65,7 +74,7 @@
 import { ref, onMounted } from 'vue'
 import { NcButton, NcLoadingIcon } from '@nextcloud/vue'
 import { showError } from '@nextcloud/dialogs'
-import { getListens } from '../api.js'
+import { getListens, releaseArtUrl } from '../api.js'
 import { relativeTime, formatDateTime } from '../format.js'
 
 const PAGE = 50
@@ -115,7 +124,22 @@ onMounted(loadMore)
   padding: 9px 0;
   border-bottom: 1px solid var(--color-border);
 }
+.listen__art {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--color-background-dark);
+}
+.listen__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 .listen__main {
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;

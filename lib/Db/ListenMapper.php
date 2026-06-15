@@ -185,6 +185,7 @@ class ListenMapper extends QBMapper
         $qb = $this->db->getQueryBuilder();
         $qb->select('artist', 'track')
             ->selectAlias($qb->func()->count('*'), 'cnt')
+            ->selectAlias($qb->func()->max('release_mbid'), 'rel_mbid')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
             ->groupBy('artist', 'track')
@@ -195,9 +196,10 @@ class ListenMapper extends QBMapper
 
         return array_map(
             static fn (array $row): array => [
-                'artist' => (string) $row['artist'],
-                'track'  => (string) $row['track'],
-                'count'  => (int) $row['cnt'],
+                'artist'      => (string) $row['artist'],
+                'track'       => (string) $row['track'],
+                'count'       => (int) $row['cnt'],
+                'releaseMbid' => $row['rel_mbid'] !== null ? (string) $row['rel_mbid'] : null,
             ],
             $this->fetchAll($qb),
         );
@@ -213,6 +215,7 @@ class ListenMapper extends QBMapper
         $qb = $this->db->getQueryBuilder();
         $qb->select('artist', 'album')
             ->selectAlias($qb->func()->count('*'), 'cnt')
+            ->selectAlias($qb->func()->max('release_mbid'), 'rel_mbid')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
             ->andWhere($qb->expr()->isNotNull('album'))
@@ -224,9 +227,10 @@ class ListenMapper extends QBMapper
 
         return array_map(
             static fn (array $row): array => [
-                'artist' => (string) $row['artist'],
-                'album'  => (string) $row['album'],
-                'count'  => (int) $row['cnt'],
+                'artist'      => (string) $row['artist'],
+                'album'       => (string) $row['album'],
+                'count'       => (int) $row['cnt'],
+                'releaseMbid' => $row['rel_mbid'] !== null ? (string) $row['rel_mbid'] : null,
             ],
             $this->fetchAll($qb),
         );

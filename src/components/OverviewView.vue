@@ -57,6 +57,18 @@
             class="top-row"
           >
             <span class="top-row__rank">{{ i + 1 }}</span>
+            <span
+              v-if="type !== 'artist'"
+              class="top-row__art"
+            >
+              <img
+                v-if="row.releaseMbid"
+                :src="releaseArtUrl(row.releaseMbid)"
+                alt=""
+                loading="lazy"
+                @error="$event.target.style.visibility = 'hidden'"
+              >
+            </span>
             <span class="top-row__label">
               <strong>{{ primary(row) }}</strong>
               <span
@@ -103,7 +115,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { NcLoadingIcon } from '@nextcloud/vue'
 import { showError } from '@nextcloud/dialogs'
-import { getTotals, getTop, getClock } from '../api.js'
+import { getTotals, getTop, getClock, releaseArtUrl } from '../api.js'
 import { formatNumber, formatDateTime } from '../format.js'
 
 const RANGES = [
@@ -247,7 +259,7 @@ onMounted(async () => {
 }
 .top-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   padding: 7px 0;
   border-bottom: 1px solid var(--color-border);
@@ -257,6 +269,20 @@ onMounted(async () => {
   text-align: right;
   color: var(--color-text-maxcontrast);
   font-variant-numeric: tabular-nums;
+}
+.top-row__art {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--color-background-dark);
+}
+.top-row__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .top-row__label {
   flex: 1;

@@ -3,10 +3,13 @@
  * returns the unwrapped OCS `data` payload, so components deal in plain data.
  */
 import axios from '@nextcloud/axios'
-import { generateOcsUrl } from '@nextcloud/router'
+import { generateOcsUrl, generateUrl } from '@nextcloud/router'
 
 const ocs = (path) => generateOcsUrl('/apps/earmark/api/v1' + path)
 const data = (res) => res.data?.ocs?.data
+
+/** Cover art URL for a release MBID (proxied + cached from Cover Art Archive). */
+export const releaseArtUrl = (mbid) => generateUrl('/apps/earmark/art/release/' + encodeURIComponent(mbid))
 
 /* ── Stats + listens ──────────────────────────────────────────────────── */
 export const getTotals = async () => data(await axios.get(ocs('/stats/totals')))
