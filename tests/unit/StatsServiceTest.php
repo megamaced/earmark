@@ -93,10 +93,11 @@ class StatsServiceTest extends TestCase
     {
         $mapper = $this->createStub(ListenMapper::class);
         $mapper->method('countForUser')->willReturn(123);
+        $mapper->method('countDistinctArtists')->willReturn(45);
         $mapper->method('getOldestListenedAt')->willReturn(1_600_000_000);
 
         self::assertSame(
-            ['listens' => 123, 'since' => 1_600_000_000],
+            ['listens' => 123, 'artists' => 45, 'since' => 1_600_000_000],
             $this->service($mapper)->totals('alice'),
         );
     }

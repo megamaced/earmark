@@ -116,6 +116,21 @@ class ListenMapper extends QBMapper
         return (int) ($value ?? 0);
     }
 
+    /** Number of distinct artists a user has listened to. */
+    public function countDistinctArtists(string $userId): int
+    {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select($qb->createFunction('COUNT(DISTINCT ' . $qb->getColumnName('artist') . ')'))
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+
+        $result = $qb->executeQuery();
+        $value  = $result->fetchOne();
+        $result->closeCursor();
+
+        return (int) ($value ?? 0);
+    }
+
     /**
      * Delete every listen for a user (the bulk-wipe primitive). The caller is
      * responsible for advancing the user's `wipedAt` marker so clients

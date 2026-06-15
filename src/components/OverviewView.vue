@@ -15,14 +15,47 @@
       </div>
     </div>
 
-    <div class="totals">
-      <div class="totals__big">
-        {{ formatNumber(totals.listens) }}
+    <div class="stat-band">
+      <div class="stat">
+        <span class="stat__num">{{ formatNumber(totals.listens) }}</span>
+        <span class="stat__label">scrobbles</span>
       </div>
-      <div class="totals__sub">
-        scrobbles<span v-if="totals.since"> · since {{ sinceLabel }}</span>
+      <div class="stat">
+        <span class="stat__num">{{ formatNumber(totals.artists) }}</span>
+        <span class="stat__label">artists</span>
+      </div>
+      <div
+        v-if="totals.since"
+        class="stat"
+      >
+        <span class="stat__num">{{ sinceLabel }}</span>
+        <span class="stat__label">scrobbling since</span>
       </div>
     </div>
+
+    <section
+      v-if="recent.length"
+      class="recent-strip"
+    >
+      <span
+        v-for="listen in recent"
+        :key="listen.id"
+        class="recent-strip__item"
+        :title="`${listen.track} — ${listen.artist}`"
+      >
+        <span class="recent-strip__art">
+          <img
+            v-if="listen.releaseMbid"
+            :src="releaseArtUrl(listen.releaseMbid)"
+            alt=""
+            loading="lazy"
+            @error="$event.target.style.visibility = 'hidden'"
+          >
+        </span>
+        <span class="recent-strip__track">{{ listen.track }}</span>
+        <span class="recent-strip__artist">{{ listen.artist }}</span>
+      </span>
+    </section>
 
     <NcLoadingIcon
       v-if="loading"
@@ -115,7 +148,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { NcLoadingIcon } from '@nextcloud/vue'
 import { showError } from '@nextcloud/dialogs'
-import { getTotals, getTop, getClock, releaseArtUrl } from '../api.js'
+import { getTotals, getTop, getClock, getListens, releaseArtUrl } from '../api.js'
 import { formatNumber, formatDateTime } from '../format.js'
 
 const RANGES = [
@@ -133,7 +166,8 @@ const TYPES = [
 
 const range = ref('30d')
 const type = ref('artist')
-const totals = ref({ listens: 0, since: null })
+const totals = ref({ listens: 0, artists: 0, since: null })
+const recent = ref([])
 const top = ref([])
 const clock = ref(new Array(24).fill(0))
 const loading = ref(true)
@@ -181,7 +215,9 @@ function setType(value) {
 
 onMounted(async () => {
   try {
-    totals.value = await getTotals() ?? { listens: 0, since: null }
+    const [t, r] = await Promise.all([getTotals(), getListens(10, 0)])
+    totals.value = t ?? { listens: 0, artists: 0, since: null }
+    recent.value = Array.isArray(r) ? r : []
   } catch (e) {
     console.error('[Earmark] failed to load totals', e)
   }
@@ -225,16 +261,65 @@ onMounted(async () => {
   color: var(--color-primary-element-text);
 }
 
-.totals {
-  margin: 20px 0 8px;
+.stat-band {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin: 20px 0 4px;
 }
-.totals__big {
-  font-size: 2.6em;
+.stat {
+  display: flex;
+  flex-direction: column;
+}
+.stat__num {
+  font-size: 1.8em;
   font-weight: 700;
   line-height: 1.1;
 }
-.totals__sub {
+.stat__label {
   color: var(--color-text-maxcontrast);
+  font-size: 0.85em;
+}
+
+.recent-strip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 16px 0 8px;
+  margin-top: 8px;
+}
+.recent-strip__item {
+  flex: 0 0 84px;
+  width: 84px;
+  display: flex;
+  flex-direction: column;
+}
+.recent-strip__art {
+  width: 84px;
+  height: 84px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--color-background-dark);
+}
+.recent-strip__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.recent-strip__track {
+  font-size: 0.78em;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recent-strip__artist {
+  font-size: 0.72em;
+  color: var(--color-text-maxcontrast);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .overview__loading {

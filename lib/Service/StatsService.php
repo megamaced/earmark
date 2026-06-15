@@ -104,12 +104,13 @@ class StatsService
     }
 
     /**
-     * @return array{listens: int, since: int|null}
+     * @return array{listens: int, artists: int, since: int|null}
      */
     public function totals(string $userId): array
     {
         return [
             'listens' => $this->listenMapper->countForUser($userId),
+            'artists' => $this->listenMapper->countDistinctArtists($userId),
             'since'   => $this->listenMapper->getOldestListenedAt($userId),
         ];
     }
